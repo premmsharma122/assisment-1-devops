@@ -1,0 +1,39 @@
+---
+- name: Provision EC2 Instance
+  hosts: localhost
+  connection: local
+  gather_facts: False
+
+  vars_files:
+    - group_vars/all.yml
+
+  tasks:
+    - name: Launch EC2 Instance
+      amazon.aws.ec2_instance:
+        name: "AnsibleEC2Docker"
+        key_name: "{{ devopsclass }}"
+        instance_type: "{{ t2.micro }}"
+        region: "{{ region }}"
+        image_id: "{{ image_id }}"
+        wait: yes
+        count: 1
+        network:
+          assign_public_ip: yes
+        security_group:
+          name: "allow_ssh_http"
+          description: "Allow SSH and HTTP"
+          rules:
+            - proto: tcp
+              ports:
+                - 22
+                - 80
+              cidr_ip: 0.0.0.0/0
+        tags:
+          Purpose: ansible-demo
+      register: ec2
+
+    - name: Add new EC2 to inventory
+      add_host:
+        name: "{{ item.public_ip_address }}"
+        groups: ec2
+      loop: "{{ ec2.instances }}"
